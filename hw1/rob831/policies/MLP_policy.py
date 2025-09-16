@@ -90,9 +90,8 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                 action = dist.sample()
             else:
                 mean = self.forward(observation)
-                std = self.logstd.exp()
-                dist = distributions.Normal(mean, std)
-                action = dist.sample()
+                # Deterministic action for continuous control during evaluation/rollouts
+                action = mean
         return ptu.to_numpy(action)
 
 

@@ -12,3 +12,4 @@ torch==1.12.1
 pyvirtualdisplay
 IPython
 gym-notebook-wrapper
+wandb

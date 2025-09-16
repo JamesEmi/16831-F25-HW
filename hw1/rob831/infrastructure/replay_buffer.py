@@ -78,7 +78,9 @@ class ReplayBuffer(object):
         ## HINT 3: look at the sample_recent_data function below
 
         total_size = self.obs.shape[0]
-        indices = np.random.choice(total_size, size=batch_size, replace=False)
+        replace = batch_size > total_size
+        sample_size = batch_size if replace else batch_size
+        indices = np.random.choice(total_size, size=sample_size, replace=replace)
 
         return (
             self.obs[indices],

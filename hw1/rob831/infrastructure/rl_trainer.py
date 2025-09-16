@@ -220,7 +220,16 @@ class RL_Trainer(object):
         # HINT: query the policy (using the get_action function) with paths[i]["observation"]
         # and replace paths[i]["action"] with these expert labels
 
-        
+        if expert_policy is None:
+            return paths
+
+        for path in paths:
+            observations = path["observation"]
+            expert_actions = expert_policy.get_action(observations)
+            # Ensure shape compatibility (N, A)
+            if expert_actions.ndim == 1:
+                expert_actions = expert_actions[:, None]
+            path["action"] = expert_actions.astype(np.float32)
 
         return paths
 
