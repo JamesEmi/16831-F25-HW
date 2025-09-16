@@ -81,11 +81,40 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             observation = obs[None]
 
         # TODO return the action that the policy prescribes
-        raise NotImplementedError
+        observation = ptu.from_numpy(observation.astype(np.float32))
+
+        with torch.no_grad():
+            if self.discrete:
+                logits = self.forward(observation)
+                dist = distributions.Categorical(logits=logits)
+                action = dist.sample()
+            else:
+                mean = self.forward(observation)
+                std = self.logstd.exp()
+                dist = distributions.Normal(mean, std)
+                action = dist.sample()
+        return ptu.to_numpy(action)
+
 
     # update/train this policy
     def update(self, observations, actions, **kwargs):
-        raise NotImplementedError
+        obs_tensor = ptu.from_numpy(observations.astype(np.float32))
+        ac_tensor = ptu.from_numpy(actions.astype(np.float32))
+
+        if self.discrete:
+            logits = self.forward(obs_tensor)
+            loss = F.cross_entropy(logits, ac_tensor)
+        else:
+            mean = self.forward(obs_tensor)
+            loss = F.mse_loss(mean, ac_tensor)
+        
+        #backward pass
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return {
+            'Training Loss': ptu.to_numpy(loss),
+        }
 
     # This function defines the forward pass of the network.
     # You can return anything you want, but you should be able to differentiate
@@ -93,7 +122,12 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # return more flexible objects, such as a
     # `torch.distributions.Distribution` object. It's up to you!
     def forward(self, observation: torch.FloatTensor) -> Any:
-        raise NotImplementedError
+        if self.discrete:
+            # discrete actions, return the logits
+            return self.logits_na(observation)
+        else:
+            # continuous actions, return the mean
+            return self.mean_net(observation)
 
 
 #####################################################
@@ -109,7 +143,23 @@ class MLPPolicySL(MLPPolicy):
             adv_n=None, acs_labels_na=None, qvals=None
     ):
         # TODO: update the policy and return the loss
-        loss = TODO
+        # loss = TODO
+        obs_tensor = ptu.from_numpy(observations)
+        actions_tensor = ptu.from_numpy(actions)
+
+        # Forward pass
+        if self.discrete:
+            # Discrete case: use cross-entropy loss
+            logits = self.forward(obs_tensor)
+            loss = F.cross_entropy(logits, actions_tensor.long())
+        else:
+            # Continuous case: use MSE loss
+            mean = self.forward(obs_tensor)
+            loss = F.mse_loss(mean, actions_tensor)
+        
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
         return {
             # You can add extra logging information here, but keep this line
