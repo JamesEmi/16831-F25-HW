@@ -231,6 +231,10 @@ class RL_Trainer(object):
                 expert_actions = expert_actions[:, None]
             path["action"] = expert_actions.astype(np.float32)
 
+#         for path in paths:
+#             for i in range(len(path["observation"])):
+#                 path["action"][i] = expert_policy.get_action(path["observation"][i])
+
         return paths
 
     ####################################
