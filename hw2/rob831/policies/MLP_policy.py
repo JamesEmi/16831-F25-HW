@@ -103,7 +103,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # update/train this policy
     def update(self, observations, actions, **kwargs):
         # this raise should be left alone as it is a base class for PG
-
+        raise NotImplementedError
     # This function defines the forward pass of the network.
     # You can return anything you want, but you should be able to differentiate
     # through it. For example, you can return a torch.FloatTensor. You can also
@@ -149,7 +149,7 @@ class MLPPolicyPG(MLPPolicy):
         # HINT3: don't forget that `optimizer.step()` MINIMIZES a loss
         # HINT4: use self.optimizer to optimize the loss. Remember to
             # 'zero_grad' first
-
+        
         # raise NotImplementedError
         dist = self(observations)
         if self.discrete:
@@ -184,7 +184,7 @@ class MLPPolicyPG(MLPPolicy):
             bl_loss.backward()
             self.baseline_optimizer.step()
         else:
-            bl_loss = torch_tensor(0.0)
+            bl_loss = torch.tensor(0.0)
 
 
         train_log = {

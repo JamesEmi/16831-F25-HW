@@ -47,7 +47,18 @@ class PGAgent(BaseAgent):
         # HINT2: look at the MLPPolicyPG class for how to update the policy
             # and obtain a train_log
 
-        raise NotImplementedError
+        # raise NotImplementedError
+        q_vals = self.calculate_q_vals(rewards_list)
+        # def estimate_advantage(self, obs, rewards_list, q_values, terminals)
+        advantages = self.estimate_advantage(observations, rewards_list, q_vals, terminals)
+
+        train_log = self.actor.update(
+            observations, 
+            actions,
+            advantages,
+            q_values = q_vals if self.nn_baseline else None
+        )
+
 
         return train_log
 
@@ -75,6 +86,7 @@ class PGAgent(BaseAgent):
 
         if not self.reward_to_go:
             #use the whole traj for each timestep
+            q_values = []
             for rewards in rewards_list:
                 # _discounted_return
                 q_values.append(self._discounted_return(rewards))
@@ -82,11 +94,11 @@ class PGAgent(BaseAgent):
         # Case 2: reward-to-go PG
         # Estimate Q^{pi}(s_t, a_t) by the discounted sum of rewards starting from t
         else:
+            q_values = []
             for rewards in rewards_list:
                 # _discounted_cumsum
                 q_values.append(self._discounted_cumsum(rewards))
         q_values = np.concatenate(q_values).astype(np.float32) #flatten the [1, T] long arrays for all trajectories
-
         return q_values  # return an array
 
     def estimate_advantage(self, obs, rewards_list, q_values, terminals):
@@ -151,7 +163,7 @@ class PGAgent(BaseAgent):
         if self.standardize_advantages:
             ## TODO: standardize the advantages to have a mean of zero
             ## and a standard deviation of one
-            advantages = normalize(advantages, np.mean(advantages))
+            advantages = normalize(advantages, np.mean(advantages), np.std(advantages))
 
         return advantages
 
@@ -204,9 +216,9 @@ class PGAgent(BaseAgent):
         if T == 0:
             return np.array([], dtype=np.float32)
         
+        discounted_cumsums = np.zeros(T, dtype=np.float32)
         ret = 0.0
         for t in reversed(range(T)):
-            discounted_cumsums = np.zeros(T)
             ret = r[t] + self.gamma * ret
             discounted_cumsums[t] = ret
 
