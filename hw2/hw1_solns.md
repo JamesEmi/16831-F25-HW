@@ -152,6 +152,7 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, ren
 ```
 
 ## `policies/MLP_policy.py`
+<!-- read here on and copy !!-->
 
 ```python
 def get_action(self, obs: np.ndarray) -> np.ndarray:
