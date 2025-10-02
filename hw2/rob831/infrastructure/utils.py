@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import copy
+import multiprocessing as mp
+import gym
 
 ############################################
 ############################################
@@ -117,8 +119,52 @@ def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, ren
         paths.append(path)
 
     return paths
-############################################
-############################################
+    
+def _rollout_worker(args):
+    from rob831.infrastructure import pytorch_util as ptu
+    from rob831.infrastructure.action_noise_wrapper import ActionNoiseWrapper
+    from rob831.policies.MLP_policy import MLPPolicyPG
+    env_name, policy_state, policy_kwargs, max_path_length, seed, worker_id, action_noise_std = args
+
+    ptu.init_gpu(use_gpu=False)
+    env = gym.make(env_name)
+    env.seed(seed + worker_id)
+    if action_noise_std and action_noise_std > 0:
+        env = ActionNoiseWrapper(env, seed + worker_id, action_noise_std)
+
+    policy = MLPPolicyPG(**policy_kwargs)
+    policy.load_state_dict({k: v.cpu() for k, v in policy_state.items()})
+    policy.eval()
+
+    path = sample_trajectory(env, policy, max_path_length, render=False)
+    return path
+
+
+def sample_trajectories_parallel(env_name,
+                                 policy_state,
+                                 policy_kwargs,
+                                 min_timesteps_per_batch,
+                                 max_path_length,
+                                 num_workers,
+                                 seed,
+                                 action_noise_std=0):
+    ctx = mp.get_context('spawn')
+    paths, timesteps_this_batch = [], 0
+    with ctx.Pool(processes=num_workers) as pool:
+        worker_id = 0
+        while timesteps_this_batch < min_timesteps_per_batch:
+            batch = []
+            for _ in range(num_workers):
+                args = (env_name, policy_state, policy_kwargs, max_path_length, seed, worker_id, action_noise_std)
+                batch.append(args)
+                worker_id += 1
+            for path in pool.map(_rollout_worker, batch):
+                paths.append(path)
+                timesteps_this_batch += get_pathlength(path)
+                if timesteps_this_batch >= min_timesteps_per_batch:
+                    break
+    return paths, timesteps_this_batch
+
 
 def Path(obs, image_obs, acs, rewards, next_obs, terminals):
     """

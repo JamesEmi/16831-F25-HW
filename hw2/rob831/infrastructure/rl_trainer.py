@@ -165,8 +165,37 @@ class RL_Trainer(object):
             num_transitions_to_sample = self.params['batch_size']
 
         print("\nCollecting data to be used for training...")
-        paths, envsteps_this_batch = utils.sample_trajectories(
-            self.env, collect_policy, num_transitions_to_sample, self.params['ep_len'])
+        t0 = time.time()
+        num_workers = self.params.get('num_workers', 1)
+
+        if num_workers > 1:
+            policy_state = {k: v.detach().cpu() for k, v in collect_policy.state_dict().items()}
+            ap = self.params['agent_params']
+            policy_kwargs = dict(
+                ac_dim=ap['ac_dim'],
+                ob_dim=ap['ob_dim'],
+                n_layers=ap['n_layers'],
+                size=ap['size'],
+                discrete=ap['discrete'],
+                learning_rate=ap['learning_rate'],
+                nn_baseline=ap['nn_baseline'],
+            )
+            paths, envsteps_this_batch = utils.sample_trajectories_parallel(
+                self.params['env_name'],
+                policy_state,
+                policy_kwargs,
+                num_transitions_to_sample,
+                self.params['ep_len'],
+                num_workers=num_workers,
+                seed=self.params['seed'],
+                action_noise_std=self.params['action_noise_std'],
+            )
+        else:
+            paths, envsteps_this_batch = utils.sample_trajectories(
+                self.env, collect_policy, num_transitions_to_sample, self.params['ep_len'])
+
+        self.last_collection_time = time.time() - t0
+        print(f"Data collection time: {self.last_collection_time:.2f}s with {num_workers} worker(s)")
 
         train_video_paths = None
         if self.log_video:
@@ -233,6 +262,8 @@ class RL_Trainer(object):
 
             logs["Train_EnvstepsSoFar"] = self.total_envsteps
             logs["TimeSinceStart"] = time.time() - self.start_time
+            logs["Collection_TimeSec"] = getattr(self, 'last_collection_time', None)
+            logs["Num_Workers"] = self.params.get('num_workers', 1)
             logs.update(last_log)
 
             if itr == 0:
