@@ -4,6 +4,9 @@ import copy
 import multiprocessing as mp
 import gym
 
+# Used to ensure per-worker device init happens only once
+_WORKER_PTU_INITIALIZED = False
+
 ############################################
 ############################################
 
@@ -126,7 +129,10 @@ def _rollout_worker(args):
     from rob831.policies.MLP_policy import MLPPolicyPG
     env_name, policy_state, policy_kwargs, max_path_length, seed, worker_id, action_noise_std = args
 
-    ptu.init_gpu(use_gpu=False)
+    global _WORKER_PTU_INITIALIZED
+    if not _WORKER_PTU_INITIALIZED:
+        ptu.init_gpu(use_gpu=False)
+        _WORKER_PTU_INITIALIZED = True
     env = gym.make(env_name)
     env.seed(seed + worker_id)
     if action_noise_std and action_noise_std > 0:
