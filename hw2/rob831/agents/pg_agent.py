@@ -121,7 +121,7 @@ class PGAgent(BaseAgent):
 
             # raise NotImplementedError
             q_mean , q_std = np.mean(q_values), np.std(q_values)
-            values = np.unnormalize(values_normalized, q_mean, q_std)
+            values = unnormalize(values_normalized, q_mean, q_std)
 
             if self.gae_lambda is not None:
                 ## append a dummy T+1 value for simpler recursive calculation
