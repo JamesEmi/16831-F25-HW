@@ -211,7 +211,7 @@ class RL_Trainer(object):
         )
 
         train_video_paths = None
-        if self.logvideo:
+        if self.log_video:
             print('Collecting rollouts for video...')
             train_video_paths = utils.sample_n_trajectories(
                 self.env,
@@ -225,8 +225,13 @@ class RL_Trainer(object):
 
     def train_agent(self):
         # TODO: get this from previous HW
-        pass
-
+        all_logs = []
+        for train_step in range(self.params['num_agent_train_steps_per_iter']):
+            obs_batch, act_batch, rew_batch, nobs_batch, term_batch = self.agent.sample(self.params['train_batch_size'])
+            train_log = self.agent.train(obs_batch, act_batch, rew_batch, nobs_batch, term_batch)
+            all_logs.append(train_log)
+        return all_logs
+    
     def train_sac_agent(self):
         # TODO: Train the SAC component of the MBPO agent.
         # For self.sac_params['num_agent_train_steps_per_iter']:
