@@ -197,6 +197,29 @@ class RL_Trainer(object):
             train_video_paths: paths which also contain videos for visualization purposes
         """
         # TODO: get this from previous HW
+        if itr == 0:
+            num_transitions_to_sample = self.params['batch_size_initial']
+        else:
+            num_transitions_to_sample = self.params['batch_size']
+
+        print('Collecting train data...')
+        paths, envsteps_this_batch = utils.sample_trajectories(
+            self.env,
+            collect_policy,
+            num_transitions_to_sample,
+            self.params['ep_len']
+        )
+
+        train_video_paths = None
+        if self.logvideo:
+            print('Collecting rollouts for video...')
+            train_video_paths = utils.sample_n_trajectories(
+                self.env,
+                collect_policy,
+                MAX_NVIDEO,
+                MAX_VIDEO_LEN,
+                True
+            )
 
         return paths, envsteps_this_batch, train_video_paths
 
