@@ -54,34 +54,34 @@ def mean_squared_error(a, b):
 ############################################
 ############################################
 
-def sample_trajectory(env, policy, max_path_length, render=False):
+def sample_trajectory(env, policy, max_path_length, render=False, render_mode=('rgb_array')):
 # TODO: get this from previous HW
     obs = env.reset()
     obses, acts, rews, nobses, terms, imgs = [], [], [], [], [], []
     steps = 0
     while True:
         if render:
-            # if 'rgb_array' in render_mode:
-            #     if hasattr(env.unwrapped, sim):
-            #         if 'track' in env.unwrapped.model.camera_names:
-            #             imgs.append(env.unwrapped.sim.render(camera_name='track', height=500, width=500)[::-1])
-            #         else:
-            #             imgs.append(env.unwrapped.sim.render(height=500, width=500)[::-1])
+            if 'rgb_array' in render_mode:
+                if hasattr(env.unwrapped, sim):
+                    if 'track' in env.unwrapped.model.camera_names:
+                        imgs.append(env.unwrapped.sim.render(camera_name='track', height=500, width=500)[::-1])
+                    else:
+                        imgs.append(env.unwrapped.sim.render(height=500, width=500)[::-1])
 
-            # if 'human' in render_mode:
-            #     env.render(mode=render_mode)
-            #     time.sleep(env.model.opt.timestep)
-            try:
-                frame = env.render()
-            except TypeError:
-                try:
-                    frame = env.render(mode='rgb_array')
-                except Exception:
-                    frame = None
-            if isinstance(frame, list):
-                frame = frame[0]
-            if frame is not None:
-                imgs.append(frame)
+            if 'human' in render_mode:
+                env.render(mode=render_mode)
+                time.sleep(env.model.opt.timestep)
+            # try:
+            #     frame = env.render()
+            # except TypeError:
+            #     try:
+            #         frame = env.render(mode='rgb_array')
+            #     except Exception:
+            #         frame = None
+            # if isinstance(frame, list):
+            #     frame = frame[0]
+            # if frame is not None:
+            #     imgs.append(frame)
 
         obses.append(obs)
         act = policy.get_action(obs)
@@ -102,7 +102,7 @@ def sample_trajectory(env, policy, max_path_length, render=False):
     return Path(obses, imgs, acts, rews, nobses, terms)
 
 
-def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False):
+def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, render=False, render_mode=('rgb_array')):
     """
         Collect rollouts using policy
         until we have collected min_timesteps_per_batch steps
@@ -111,21 +111,21 @@ def sample_trajectories(env, policy, min_timesteps_per_batch, max_path_length, r
     timesteps_this_batch = 0
     paths = []
     while timesteps_this_batch < min_timesteps_per_batch:
-        path = sample_trajectory(env, policy, max_path_length, render)
+        path = sample_trajectory(env, policy, max_path_length, render, render_mode)
         paths.append(path)
         timesteps_this_batch += get_pathlength(path)
         print('sampled {}/{} timesteps'.format(timesteps_this_batch, min_timesteps_per_batch), end='\r')
 
     return paths, timesteps_this_batch
 
-def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False):
+def sample_n_trajectories(env, policy, ntraj, max_path_length, render=False, render_mode=('rgb_array')):
     """
         Collect ntraj rollouts using policy
     """
     # TODO: get this from Piazza
     paths = []
     for i in range(ntraj):
-        path = sample_trajectory(env, policy, max_path_length, render)
+        path = sample_trajectory(env, policy, max_path_length, render, render_mode)
         paths.append(path)
         print('sampled {}/ {} trajs'.format(i, ntraj), end='\r')
     return paths

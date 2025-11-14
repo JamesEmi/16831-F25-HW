@@ -71,10 +71,38 @@ class MPCPolicy(BasePolicy):
                 #     (Hint: what existing function can we use to compute rewards for
                 #      our candidate sequences in order to rank them?)
                 # - Update the elite mean and variance
-                pass
+                elite_mean = None
+                elite_std = None
+                for i in range(self.cem_iterations):
+                    if i == 0:
+                        if i == 0:
+                            candidate_action_sequences = np.random.uniform(
+                                low=self.low, high=self.high, size=(self.N, horizon, self.ac_dim)
+                            )
+                        else:
+                            # sample from gaussian with current elite mean/std
+                            candidate_action_sequences = np.random.randn(self.N, horizon, self.ac_dim) * (elite_std + 1e-6) + elite_mean
+                            candidate_action_sequences = np.clip(candidate_action_sequences, self.low, self.high)
+
+                        rewards = self.evaluate_candidate_sequences(candidate_action_sequences, obs)
+                        elite_idxs = rewards.argsort()[-self.cem_num_elites:]
+                        elites = candidate_action_sequences[elite_idxs]
+
+                        # update the elite distribution with smoothing
+                        new_mean = elites.mean(axis=0)
+                        new_std = elites.std(axis=0)
+                        if elite_mean is None:
+                            elite_mean = new_mean
+                            elite_std = new_std
+                        else:
+                            elite_mean = self.cem_alpha * new_mean + (1-self.cem_alpha) * new_mean
+                            elite_std = self.cem_alpha * new_std + (1-self.cem_alpha) * new_std
+
+
+                # pass
 
             # TODO(Q5): Set `cem_action` to the appropriate action chosen by CEM
-            cem_action = None
+            cem_action = elite_mean
 
             return cem_action[None]
         else:
