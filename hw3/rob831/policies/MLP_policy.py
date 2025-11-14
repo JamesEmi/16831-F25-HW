@@ -97,6 +97,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # update/train this policy
     def update(self, observations, actions, **kwargs):
         raise NotImplementedError
+        
 
     # This function defines the forward pass of the network.
     # You can return anything you want, but you should be able to differentiate
@@ -126,4 +127,26 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 class MLPPolicyAC(MLPPolicy):
     def update(self, observations, actions, adv_n=None):
         # TODO: update the policy and return the loss
+        # observations - (N, ob_dim), actions: (N,) for discrete, (N, ac_dim) for continuous
+        obs = ptu.from_numpy(observations)
+        dist = self.forward(obs)
+
+        if self.discrete:
+            act_t = ptu.from_numpy(actions).long()
+            log_prob = dist.log_prob(act_t) # (N,)
+        else:
+            act_t = ptu.from_numpy(actions)
+            log_prob = dist.log_prob(act_t)
+
+        if adv_n is None:
+            adv_t = torch.ones_like(log_prob)
+        else:
+            adv_t = ptu.from_numpy(adv_n)
+        
+        # apply loss bw the action from the logprob vs gt action
+        loss = -(log_prob * adv_t).mean()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
         return loss.item()
+        # return loss.item()
